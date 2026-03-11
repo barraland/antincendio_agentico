@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fire Safety Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css?v=2" />
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 shadow-sm">
+    <div class="px-6 py-4 flex items-center gap-3">
+      <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777
+          17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+      </svg>
+      <h1 class="text-xl font-semibold text-gray-900">Fire Safety Analyzer</h1>
+    </div>
+  </header>
+
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-72 bg-white border-r border-gray-200 flex flex-col">
+
+      <!-- Sidebar tabs -->
+      <div class="sidebar-tabs">
+        <button class="sidebar-tab active" data-tab="analisi">Analisi</button>
+        <button class="sidebar-tab" data-tab="normativa">Normativa</button>
+        <button class="sidebar-tab" data-tab="chunks">Chunks</button>
+        <button class="sidebar-tab" data-tab="chat">Interrogazione</button>
+      </div>
+
+      <!-- Analisi panel -->
+      <div id="sidebar-analisi" class="sidebar-panel flex flex-col flex-1">
+        <div class="p-4 border-b border-gray-100">
+          <button id="new-upload-btn"
+            class="w-full bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Carica PDF
+          </button>
+        </div>
+        <div id="doc-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+      </div>
+
+      <!-- Normativa panel -->
+      <div id="sidebar-normativa" class="sidebar-panel hidden flex flex-col flex-1">
+        <div class="p-4 border-b border-gray-100">
+          <button id="norm-upload-btn"
+            class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Carica Norma
+          </button>
+        </div>
+        <div id="norm-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+      </div>
+
+      <!-- Chunks panel (sidebar is minimal — just a label) -->
+      <div id="sidebar-chunks" class="sidebar-panel hidden flex flex-col flex-1">
+        <div class="p-4 text-sm text-gray-500">
+          Usa i filtri nella schermata principale per esplorare i chunk indicizzati.
+        </div>
+      </div>
+
+      <!-- Chat panel (sidebar: conversation list) -->
+      <div id="sidebar-chat" class="sidebar-panel hidden flex flex-col flex-1">
+        <div class="p-4 border-b border-gray-100">
+          <button id="chat-new-btn"
+            class="w-full bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Nuova chat
+          </button>
+        </div>
+        <div id="chat-conv-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+      </div>
+
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 overflow-y-auto p-8">
+
+      <!-- ══════ ANALISI sections ══════ -->
+
+      <!-- Upload Section -->
+      <section id="upload-section">
+        <div id="drop-zone"
+          class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center
+                 hover:border-red-400 transition-colors cursor-pointer max-w-2xl mx-auto">
+          <svg class="mx-auto w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+          </svg>
+          <p class="text-gray-600 mb-2">Trascina qui il PDF della relazione tecnica</p>
+          <p class="text-sm text-gray-400">oppure clicca per selezionare</p>
+          <input type="file" id="file-input" accept=".pdf" class="hidden" />
+        </div>
+        <div id="file-info" class="mt-3 hidden flex items-center justify-center gap-4">
+          <span id="file-name" class="text-sm text-gray-600"></span>
+          <button id="analyze-btn"
+            class="bg-red-600 text-white px-6 py-2 rounded-lg font-medium
+                   hover:bg-red-700 transition-colors">
+            Analizza
+          </button>
+        </div>
+      </section>
+
+      <!-- Loading -->
+      <section id="loading-section" class="hidden text-center py-16">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-gray-600 text-lg">Analisi in corso...</p>
+        <p class="text-sm text-gray-400 mt-1">L'estrazione potrebbe richiedere qualche minuto</p>
+      </section>
+
+      <!-- Results -->
+      <section id="results-section" class="hidden space-y-6">
+        <div class="flex justify-end">
+          <button id="export-btn"
+            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-gray-200 transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Esporta HTML
+          </button>
+        </div>
+        <div id="header-card" class="bg-white rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Dati Generali</h2>
+          <div id="header-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </div>
+        <div class="bg-white rounded-lg shadow">
+          <div id="building-tabs" class="flex border-b overflow-x-auto"></div>
+          <div id="building-content" class="p-6"></div>
+        </div>
+      </section>
+
+      <!-- Error -->
+      <section id="error-section" class="hidden">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p class="text-red-700 font-medium">Errore durante l'analisi</p>
+          <p id="error-message" class="text-red-500 text-sm mt-2"></p>
+          <button id="retry-btn"
+            class="mt-4 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700">
+            Riprova
+          </button>
+        </div>
+      </section>
+
+      <!-- ══════ NORMATIVA sections ══════ -->
+
+      <!-- Norm Upload -->
+      <section id="norm-upload-section" class="hidden">
+        <div class="max-w-2xl mx-auto space-y-5">
+          <!-- Drop zone -->
+          <div id="norm-drop-zone"
+            class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center
+                   hover:border-indigo-400 transition-colors cursor-pointer">
+            <svg class="mx-auto w-10 h-10 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477
+                5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0
+                3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <p class="text-gray-600 mb-1">Trascina qui il PDF della norma</p>
+            <p class="text-sm text-gray-400">Leggi, decreti, norme tecniche</p>
+            <input type="file" id="norm-file-input" accept=".pdf" class="hidden" />
+          </div>
+          <div id="norm-file-info" class="hidden text-center text-sm text-gray-600">
+            <span id="norm-file-name"></span>
+          </div>
+
+          <!-- Metadata form (shown after file selection) -->
+          <div id="norm-meta-form" class="hidden bg-white rounded-lg shadow p-5 space-y-4">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Metadati documento</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="field-label" for="norm-nome-legge">Nome breve *</label>
+                <input id="norm-nome-legge" type="text" placeholder="es. DM 03/08/2015"
+                  class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="field-label" for="norm-titolo-esteso">Titolo esteso</label>
+                <input id="norm-titolo-esteso" type="text"
+                  placeholder="es. Decreto Ministeriale 3 agosto 2015 - Norme tecniche..."
+                  class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="field-label" for="norm-data-inizio">Data inizio validita</label>
+                <input id="norm-data-inizio" type="date"
+                  class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label class="field-label" for="norm-data-fine">Data fine validita</label>
+                <input id="norm-data-fine" type="date"
+                  class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <p class="text-xs text-gray-400 mt-1">Lascia vuoto se ancora in vigore</p>
+              </div>
+            </div>
+            <div class="pt-2">
+              <button id="norm-analyze-btn"
+                class="w-full bg-indigo-600 text-white px-6 py-2.5 rounded-lg font-medium
+                       hover:bg-indigo-700 transition-colors">
+                Avvia Ingestion
+              </button>
+            </div>
+          </div>
+
+          <!-- Document management panel -->
+          <div id="norm-doc-panel" class="bg-white rounded-lg shadow p-5 space-y-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Documenti caricati</h3>
+            <div id="norm-doc-table-container">
+              <table class="w-full text-sm" id="norm-doc-table">
+                <thead>
+                  <tr class="border-b text-left text-gray-500">
+                    <th class="py-2 px-2 font-medium">Nome</th>
+                    <th class="py-2 px-2 font-medium text-center">Chunks</th>
+                    <th class="py-2 px-2 font-medium text-center">Pagine</th>
+                    <th class="py-2 px-2 font-medium text-center">Caratteri</th>
+                    <th class="py-2 px-2 font-medium text-center">Stato</th>
+                    <th class="py-2 px-2 font-medium text-right"></th>
+                  </tr>
+                </thead>
+                <tbody id="norm-doc-tbody"></tbody>
+              </table>
+              <p id="norm-doc-empty" class="text-gray-400 text-sm text-center py-4 hidden">
+                Nessun documento caricato.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Norm Processing -->
+      <section id="norm-processing-section" class="hidden text-center py-16">
+        <div class="spinner spinner-indigo mx-auto mb-4"></div>
+        <p id="norm-progress-text" class="text-gray-600 text-lg">Elaborazione in corso...</p>
+        <p class="text-sm text-gray-400 mt-1">Il chunking LLM potrebbe richiedere qualche minuto</p>
+      </section>
+
+      <!-- Norm Detail -->
+      <section id="norm-detail-section" class="hidden">
+        <div class="bg-white rounded-lg shadow p-6 max-w-3xl mx-auto">
+          <h2 id="norm-detail-title" class="text-lg font-semibold text-gray-900 mb-4 border-b pb-2"></h2>
+          <div id="norm-detail-body"></div>
+        </div>
+      </section>
+
+      <!-- Norm Error -->
+      <section id="norm-error-section" class="hidden">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <p class="text-red-700 font-medium">Errore durante l'ingestion</p>
+          <p id="norm-error-message" class="text-red-500 text-sm mt-2"></p>
+          <button id="norm-retry-btn"
+            class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            Riprova
+          </button>
+        </div>
+      </section>
+
+      <!-- ══════ CHUNKS EXPLORER ══════ -->
+
+      <section id="chunks-section" class="hidden">
+        <!-- Filters bar -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+          <div class="flex flex-wrap items-end gap-4">
+            <div>
+              <label class="field-label" for="chunk-filter-doc">Documento</label>
+              <select id="chunk-filter-doc"
+                class="mt-1 block w-64 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="">Tutti i documenti</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="chunk-filter-index">Chunk #</label>
+              <input id="chunk-filter-index" type="number" min="0" placeholder="es. 0, 1, 2..."
+                class="mt-1 block w-28 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            </div>
+            <div>
+              <label class="field-label" for="chunk-filter-keyword">Keyword</label>
+              <input id="chunk-filter-keyword" type="text" placeholder="Cerca nel testo..."
+                class="mt-1 block w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-teal-500" />
+            </div>
+            <button id="chunk-filter-btn"
+              class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-medium
+                     hover:bg-teal-700 transition-colors">
+              Filtra
+            </button>
+            <span id="chunk-count-label" class="text-sm text-gray-400 ml-auto"></span>
+          </div>
+        </div>
+
+        <!-- Retrieve test panel -->
+        <div class="bg-white rounded-lg shadow p-4 mb-4">
+          <div class="font-semibold text-sm text-gray-700 mb-3">Test Retrieve (L2 sub-chunks)</div>
+          <div class="flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[200px]">
+              <label class="field-label" for="retrieve-query">Query</label>
+              <input id="retrieve-query" type="text" placeholder="Es. resistenza al fuoco delle strutture..."
+                class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label class="field-label" for="retrieve-mode">Modalità</label>
+              <select id="retrieve-mode"
+                class="mt-1 block w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="hybrid" selected>Hybrid (RRF)</option>
+                <option value="vector">Vector</option>
+                <option value="bm25">BM25</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="retrieve-doc">Documento</label>
+              <select id="retrieve-doc"
+                class="mt-1 block w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="">Tutti</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="retrieve-k">K</label>
+              <input id="retrieve-k" type="number" min="1" max="100" value="10"
+                class="mt-1 block w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div>
+              <label class="field-label" for="retrieve-threshold">Soglia</label>
+              <input id="retrieve-threshold" type="number" min="0" max="1" step="0.05" value="0" placeholder="0 = off"
+                class="mt-1 block w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <button id="retrieve-btn"
+              class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm font-medium
+                     hover:bg-indigo-700 transition-colors">
+              Retrieve
+            </button>
+          </div>
+          <div id="retrieve-results" class="mt-3 hidden"></div>
+        </div>
+
+        <!-- Chunk detail (single chunk view) -->
+        <div id="chunk-detail" class="hidden"></div>
+
+        <!-- Chunk list -->
+        <div id="chunk-list" class="space-y-3"></div>
+
+        <!-- Empty state -->
+        <div id="chunk-empty" class="hidden text-center py-12 text-gray-400">
+          Nessun chunk trovato. Carica una norma nel tab "Normativa" per iniziare.
+        </div>
+      </section>
+
+      <!-- ══════ CHAT / INTERROGAZIONE ══════ -->
+
+      <section id="chat-section" class="hidden flex flex-col" style="height: calc(100vh - 80px);">
+        <!-- Messages area -->
+        <div id="chat-messages" class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div id="chat-welcome" class="text-center py-16 text-gray-400">
+            <svg class="mx-auto w-12 h-12 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <p class="text-lg font-medium">Interroga i documenti normativi</p>
+            <p class="text-sm mt-1">Fai una domanda sulla normativa antincendio caricata</p>
+          </div>
+        </div>
+
+        <!-- Debug panel (collapsible) -->
+        <div id="chat-debug-panel" class="hidden border-t bg-gray-50 max-h-40 overflow-y-auto px-4 py-2 text-xs font-mono text-gray-500">
+        </div>
+
+        <!-- Input area -->
+        <div class="border-t bg-white px-6 py-4">
+          <div class="flex gap-3 items-end max-w-4xl mx-auto">
+            <div class="flex-1">
+              <textarea id="chat-input" rows="2" placeholder="Scrivi la tua domanda..."
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm resize-none
+                       focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                style="min-height:44px; max-height:120px;"></textarea>
+            </div>
+            <button id="chat-send-btn"
+              class="bg-emerald-600 text-white px-5 py-3 rounded-lg text-sm font-medium
+                     hover:bg-emerald-700 transition-colors flex items-center gap-2 flex-shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+              </svg>
+              Invia
+            </button>
+          </div>
+          <!-- Settings row -->
+          <div class="flex gap-4 mt-2 max-w-4xl mx-auto text-xs text-gray-500 items-center">
+            <label class="flex items-center gap-1">
+              <input type="checkbox" id="chat-debug-toggle" class="rounded">
+              Debug
+            </label>
+            <label class="flex items-center gap-1">
+              Modalità:
+              <select id="chat-search-mode" class="border rounded px-1 py-0.5 text-xs">
+                <option value="hybrid" selected>Hybrid</option>
+                <option value="vector">Vector</option>
+                <option value="bm25">BM25</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-1">
+              K per query:
+              <input id="chat-k" type="number" value="8" min="1" max="20"
+                class="border rounded px-1 py-0.5 text-xs w-12">
+            </label>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/normativa.js"></script>
+  <script src="/static/chunks.js?v=3"></script>
+  <script src="/static/chat.js?v=4"></script>
+</body>
+</html>

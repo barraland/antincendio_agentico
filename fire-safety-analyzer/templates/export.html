@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fire Safety Report — {{ filename }}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#1f2937;background:#f9fafb;line-height:1.5;font-size:14px}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+header{background:#fff;border-bottom:1px solid #e5e7eb;padding:16px 24px;margin-bottom:24px;display:flex;align-items:center;gap:12px}
+header h1{font-size:18px;font-weight:600;color:#111827}
+header .meta{margin-left:auto;font-size:12px;color:#6b7280}
+.card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:20px;margin-bottom:20px}
+.card h2{font-size:16px;font-weight:600;color:#111827;border-bottom:1px solid #e5e7eb;padding-bottom:8px;margin-bottom:12px}
+.header-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field-label{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+.field-value{font-size:14px;color:#111827;margin-top:2px}
+.field-value.empty{color:#d1d5db}
+.col-span-2{grid-column:span 2}
+.tabs{display:flex;border-bottom:2px solid #e5e7eb;margin-bottom:16px;gap:0}
+.tab{padding:8px 20px;font-size:13px;font-weight:500;color:#6b7280;border-bottom:2px solid transparent;cursor:pointer;margin-bottom:-2px;user-select:none}
+.tab:hover{color:#374151}
+.tab.active{color:#dc2626;border-bottom-color:#dc2626}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.comp{border:1px solid #e5e7eb;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.comp-header{padding:10px 16px;background:#f9fafb;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.comp-header .title{font-weight:500}
+.comp-header .arrow{color:#9ca3af;transition:transform .2s}
+.comp-header.open .arrow{transform:rotate(90deg)}
+.comp-body{display:none;padding:16px;border-top:1px solid #e5e7eb}
+.comp-body.open{display:block}
+.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.badge{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:11px;font-weight:600;letter-spacing:.025em;margin-right:4px}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-yellow{background:#fef3c7;color:#92400e}
+.badge-orange{background:#ffedd5;color:#9a3412}
+.badge-red{background:#fee2e2;color:#991b1b}
+.badge-gray{background:#f3f4f6;color:#374151}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:#6b7280;border-bottom:1px solid #e5e7eb;padding:6px 8px;font-weight:500}
+td{padding:6px 8px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+td.raz{font-size:12px;color:#4b5563;line-height:1.5}
+.note-riduzione{font-size:13px;color:#92400e;background:#fffbeb;padding:8px 12px;border-radius:6px;margin-bottom:12px}
+.dpr-code{font-weight:600;color:#dc2626}
+.dpr-desc{color:#6b7280}
+@media print{body{background:#fff}.card{box-shadow:none;border:1px solid #e5e7eb}.comp{break-inside:avoid}}
+</style>
+</head>
+<body>
+<header>
+  <svg width="28" height="28" fill="none" stroke="#dc2626" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/></svg>
+  <h1>Fire Safety Report</h1>
+  <div class="meta">{{ filename }}<br/>{{ timestamp }}</div>
+</header>
+<div class="container">
+<div id="app"></div>
+</div>
+<script>
+{% raw %}
+var DATA = {{ DATA_PLACEHOLDER }};
+var DASH = '<span class="field-value empty">&mdash;</span>';
+
+function D(v) {
+  return v != null ? String(v) : DASH;
+}
+
+function renderHeader(h) {
+  var fields = [
+    ["Tecnico Firmatario", h.tecnico_firmatario],
+    ["Studio Tecnico", h.studio_tecnico],
+    ["Committente", h.committente_nome],
+    ["Indirizzo Committente", h.committente_indirizzo],
+    ["Descrizione Attivita", h.attivita_descrizione],
+    ["Ubicazione", h.ubicazione],
+    ["Data Relazione", h.data_relazione],
+    ["Riferimento Pratica", h.riferimento_pratica],
+    ["Tipo Pratica", h.tipo_pratica]
+  ];
+  var html = '<div class="header-grid">';
+  for (var i = 0; i < fields.length; i++) {
+    html += '<div><div class="field-label">' + fields[i][0] + '</div><div class="field-value">' + D(fields[i][1]) + '</div></div>';
+  }
+  var dpr = h.attivita_dpr || [];
+  if (dpr.length) {
+    html += '<div class="col-span-2"><div class="field-label">Attivita DPR 151/11</div>';
+    for (var j = 0; j < dpr.length; j++) {
+      html += '<div style="margin-top:4px"><span class="dpr-code">' + dpr[j].codice + '</span>';
+      if (dpr[j].descrizione) html += ' <span class="dpr-desc">&mdash; ' + dpr[j].descrizione + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function rvitaColor(v) {
+  if (!v) return "gray";
+  var u = v.toUpperCase();
+  if (u.indexOf("A1") === 0 || u.indexOf("A2") === 0) return "green";
+  if (u.indexOf("A3") === 0 || u.indexOf("B1") === 0 || u.indexOf("B2") === 0) return "yellow";
+  if (u.indexOf("B3") === 0 || u.indexOf("C") === 0) return "orange";
+  return "red";
+}
+
+function badges(rp) {
+  if (!rp) return "";
+  var h = "";
+  if (rp.rvita) h += '<span class="badge badge-' + rvitaColor(rp.rvita) + '">Rvita ' + rp.rvita + '</span>';
+  if (rp.rbeni != null) h += '<span class="badge badge-gray">Rbeni ' + rp.rbeni + '</span>';
+  if (rp.rambiente) {
+    var c = rp.rambiente.toLowerCase().indexOf("non significativo") >= 0 ? "green" : "red";
+    h += '<span class="badge badge-' + c + '">Ramb ' + rp.rambiente + '</span>';
+  }
+  return h;
+}
+
+function riskTable(rp) {
+  if (!rp) return "";
+  var rows = [
+    ["Rvita", rp.rvita, rp.razionale_rvita],
+    ["\u03B4occ", rp.delta_occ, rp.razionale_delta_occ],
+    ["\u03B4\u03B1", rp.delta_alpha, rp.razionale_delta_alpha],
+    ["qf (MJ/m\u00B2)", rp.carico_incendio_mj_m2, rp.razionale_carico_incendio],
+    ["Rbeni", rp.rbeni, rp.razionale_rbeni],
+    ["Rambiente", rp.rambiente, rp.razionale_rambiente]
+  ];
+  var h = '<table><thead><tr><th style="width:100px">Parametro</th><th style="width:80px">Valore</th><th>Razionale</th></tr></thead><tbody>';
+  for (var i = 0; i < rows.length; i++) {
+    h += '<tr><td style="font-weight:500">' + rows[i][0] + '</td><td>' + D(rows[i][1]) + '</td><td class="raz">' + D(rows[i][2]) + '</td></tr>';
+  }
+  h += '</tbody></table>';
+  if (rp.note_riduzione) {
+    h += '<div class="note-riduzione" style="margin-top:8px"><strong>Nota riduzione:</strong> ' + rp.note_riduzione + '</div>';
+  }
+  return h;
+}
+
+function measuresTable(measures) {
+  if (!measures || !measures.length) return "";
+  var h = '<h3 style="font-size:13px;font-weight:600;color:#374151;margin:16px 0 8px;padding-top:12px;border-top:1px solid #e5e7eb">Misure Antincendio</h3>';
+  h += '<table><thead><tr><th style="width:140px">Misura</th><th style="width:50px">Livello</th><th>Soluzione tecnica</th><th>Razionale livello</th><th>Razionale soluzione</th></tr></thead><tbody>';
+  for (var i = 0; i < measures.length; i++) {
+    var m = measures[i];
+    h += '<tr><td style="font-weight:500">' + m.codice + (m.nome ? ' - ' + m.nome : '') + '</td>';
+    h += '<td>' + D(m.livello_prestazione) + '</td>';
+    h += '<td>' + D(m.soluzione_tecnica) + '</td>';
+    h += '<td class="raz">' + D(m.razionale_livello) + '</td>';
+    h += '<td class="raz">' + D(m.razionale_soluzione) + '</td></tr>';
+  }
+  h += '</tbody></table>';
+  return h;
+}
+
+function roomsTable(locali) {
+  if (!locali || !locali.length) return "";
+  var h = '<h3 style="font-size:13px;font-weight:600;color:#374151;margin:16px 0 8px;padding-top:12px;border-top:1px solid #e5e7eb">Locali</h3>';
+  h += '<table><thead><tr><th>Locale</th><th style="width:80px">Piano</th></tr></thead><tbody>';
+  for (var i = 0; i < locali.length; i++) {
+    h += '<tr><td>' + locali[i].nome + '</td><td>' + D(locali[i].piano) + '</td></tr>';
+  }
+  h += '</tbody></table>';
+  return h;
+}
+
+function renderComp(c) {
+  var rp = c.risk_profile;
+  var h = '<div class="info-grid">';
+  h += '<div><div class="field-label">Superficie</div><div class="field-value">' + (c.superficie_mq != null ? c.superficie_mq + ' mq' : D(null)) + '</div></div>';
+  h += '<div><div class="field-label">Multipiano</div><div class="field-value">' + (c.multipiano != null ? (c.multipiano ? 'Si' : 'No') : D(null)) + '</div></div>';
+  h += '<div><div class="field-label">Ambito aperto</div><div class="field-value">' + (c.ambito_aperto ? 'Si' : 'No') + '</div></div>';
+  h += '<div><div class="field-label">Assegnazione</div><div class="field-value">' + D(rp ? rp.source : null) + '</div></div>';
+  h += '</div>';
+  h += riskTable(rp);
+  h += measuresTable(c.measures);
+  h += roomsTable(c.locali);
+  return h;
+}
+
+function render() {
+  var app = document.getElementById("app");
+  var html = '<div class="card"><h2>Dati Generali</h2>' + renderHeader(DATA.header) + '</div>';
+
+  var buildings = DATA.buildings || [];
+  if (!buildings.length) {
+    html += '<div class="card"><p style="color:#9ca3af">Nessun edificio identificato</p></div>';
+    app.innerHTML = html;
+    return;
+  }
+
+  html += '<div class="card"><div class="tabs">';
+  for (var i = 0; i < buildings.length; i++) {
+    html += '<div class="tab' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">' + (buildings[i].nome || buildings[i].id) + '</div>';
+  }
+  html += '</div>';
+
+  for (var i = 0; i < buildings.length; i++) {
+    var b = buildings[i];
+    html += '<div class="tab-content' + (i === 0 ? ' active' : '') + '" data-idx="' + i + '">';
+    if (!b.compartments || !b.compartments.length) {
+      html += '<p style="color:#9ca3af">Nessun compartimento</p>';
+    } else {
+      for (var j = 0; j < b.compartments.length; j++) {
+        var c = b.compartments[j];
+        var openBadge = c.ambito_aperto ? ' <span class="badge badge-gray">Aperto</span>' : '';
+        html += '<div class="comp">';
+        html += '<div class="comp-header" onclick="toggleComp(this)">';
+        html += '<div class="title">' + c.id + ' &mdash; ' + c.nome + ' ' + badges(c.risk_profile) + openBadge + '</div>';
+        html += '<span class="arrow">&#9654;</span>';
+        html += '</div>';
+        html += '<div class="comp-body">' + renderComp(c) + '</div>';
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+  app.innerHTML = html;
+
+  var tabs = document.querySelectorAll(".tab");
+  for (var t = 0; t < tabs.length; t++) {
+    tabs[t].addEventListener("click", function() {
+      var allTabs = document.querySelectorAll(".tab");
+      var allContents = document.querySelectorAll(".tab-content");
+      for (var x = 0; x < allTabs.length; x++) allTabs[x].classList.remove("active");
+      for (var x = 0; x < allContents.length; x++) allContents[x].classList.remove("active");
+      this.classList.add("active");
+      document.querySelector('.tab-content[data-idx="' + this.dataset.idx + '"]').classList.add("active");
+    });
+  }
+}
+
+function toggleComp(el) {
+  el.classList.toggle("open");
+  el.nextElementSibling.classList.toggle("open");
+}
+
+render();
+{% endraw %}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Data files
+dati/
+
+# Claude Code
+.claude/
+
+# Qdrant local storage
+fire-safety-analyzer/qdrant_data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+langgraph_env/
+
+# Environment variables
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
