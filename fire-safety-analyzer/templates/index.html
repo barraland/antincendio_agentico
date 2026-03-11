@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fire Safety Analyzer</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=2" />
+  <link rel="stylesheet" href="/static/style.css?v=6" />
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
@@ -28,30 +28,77 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="w-72 bg-white border-r border-gray-200 flex flex-col">
 
-      <!-- Sidebar tabs -->
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab active" data-tab="analisi">Analisi</button>
-        <button class="sidebar-tab" data-tab="normativa">Normativa</button>
-        <button class="sidebar-tab" data-tab="chunks">Chunks</button>
-        <button class="sidebar-tab" data-tab="chat">Interrogazione</button>
+      <!-- Sidebar navigation -->
+      <div class="sidebar-nav">
+        <!-- Pratiche: direct tab -->
+        <button class="sidebar-tab active" data-tab="pratiche">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          Pratiche
+        </button>
+
+        <!-- Normativa: expandable parent -->
+        <button class="sidebar-tab" data-tab="normativa" id="normativa-parent-tab">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477
+              5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0
+              3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Normativa
+          <svg class="sidebar-tab-arrow w-3 h-3 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </button>
+        <!-- Normativa sub-items -->
+        <div id="normativa-subnav" class="sidebar-subnav hidden">
+          <button class="sidebar-subtab" data-tab="norm-upload">Carica documento</button>
+          <button class="sidebar-subtab" data-tab="chunks">Esplora chunk</button>
+          <button class="sidebar-subtab" data-tab="chat">Interroga</button>
+        </div>
       </div>
 
-      <!-- Analisi panel -->
-      <div id="sidebar-analisi" class="sidebar-panel flex flex-col flex-1">
+      <!-- Pratiche panel (client list) -->
+      <div id="sidebar-pratiche" class="sidebar-panel flex flex-col flex-1">
         <div class="p-4 border-b border-gray-100">
-          <button id="new-upload-btn"
+          <button id="new-client-btn"
             class="w-full bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium
                    hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Carica PDF
+            Nuovo Cliente
           </button>
         </div>
-        <div id="doc-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
+        <!-- Inline new client form -->
+        <div id="new-client-form" class="hidden p-3 border-b border-gray-100 bg-red-50">
+          <label class="field-label mb-1 block">Ragione Sociale</label>
+          <input id="new-client-name" type="text" placeholder="es. Rossi S.r.l."
+            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                   focus:outline-none focus:ring-2 focus:ring-red-500 mb-2" />
+          <div class="flex gap-2">
+            <button id="save-client-btn"
+              class="flex-1 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-700">
+              Crea
+            </button>
+            <button id="cancel-client-btn"
+              class="flex-1 bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300">
+              Annulla
+            </button>
+          </div>
+        </div>
+        <!-- Search -->
+        <div class="p-2">
+          <input id="client-search" type="text" placeholder="Cerca cliente..."
+            class="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs
+                   focus:outline-none focus:ring-2 focus:ring-red-400" />
+        </div>
+        <div id="client-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
       </div>
 
-      <!-- Normativa panel -->
+      <!-- Normativa panel (document list for norm-upload sub-tab) -->
       <div id="sidebar-normativa" class="sidebar-panel hidden flex flex-col flex-1">
         <div class="p-4 border-b border-gray-100">
           <button id="norm-upload-btn"
@@ -66,19 +113,19 @@
         <div id="norm-list" class="flex-1 overflow-y-auto p-2 space-y-1"></div>
       </div>
 
-      <!-- Chunks panel (sidebar is minimal — just a label) -->
+      <!-- Chunks panel (sidebar is minimal) -->
       <div id="sidebar-chunks" class="sidebar-panel hidden flex flex-col flex-1">
         <div class="p-4 text-sm text-gray-500">
           Usa i filtri nella schermata principale per esplorare i chunk indicizzati.
         </div>
       </div>
 
-      <!-- Chat panel (sidebar: conversation list) -->
+      <!-- Chat panel (conversation list) -->
       <div id="sidebar-chat" class="sidebar-panel hidden flex flex-col flex-1">
         <div class="p-4 border-b border-gray-100">
           <button id="chat-new-btn"
-            class="w-full bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium
-                   hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+            class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
@@ -93,41 +140,256 @@
     <!-- Main content -->
     <main class="flex-1 overflow-y-auto p-8">
 
-      <!-- ══════ ANALISI sections ══════ -->
+      <!-- ══════ CLIENTI sections ══════ -->
 
-      <!-- Upload Section -->
-      <section id="upload-section">
-        <div id="drop-zone"
-          class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center
-                 hover:border-red-400 transition-colors cursor-pointer max-w-2xl mx-auto">
-          <svg class="mx-auto w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+      <!-- Welcome / Client cards (no client selected) -->
+      <section id="clients-welcome-section">
+        <div class="text-center py-12">
+          <svg class="mx-auto w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
-          <p class="text-gray-600 mb-2">Trascina qui il PDF della relazione tecnica</p>
-          <p class="text-sm text-gray-400">oppure clicca per selezionare</p>
-          <input type="file" id="file-input" accept=".pdf" class="hidden" />
+          <h2 class="text-lg font-semibold text-gray-700 mb-2">Gestione Clienti</h2>
+          <p class="text-sm text-gray-400 mb-6">Seleziona un cliente dalla sidebar o creane uno nuovo</p>
         </div>
-        <div id="file-info" class="mt-3 hidden flex items-center justify-center gap-4">
-          <span id="file-name" class="text-sm text-gray-600"></span>
-          <button id="analyze-btn"
-            class="bg-red-600 text-white px-6 py-2 rounded-lg font-medium
-                   hover:bg-red-700 transition-colors">
-            Analizza
+        <div id="clients-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto"></div>
+      </section>
+
+      <!-- Client view: documents sub-tab -->
+      <section id="client-docs-section" class="hidden">
+        <!-- Header with actions -->
+        <div class="flex items-center gap-3 mb-4">
+          <button id="client-back-btn" class="text-gray-400 hover:text-red-600 transition-colors" title="Torna ai clienti">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h2 id="client-name-header" class="text-lg font-semibold text-gray-900 flex-1"></h2>
+          <!-- Inline rename form (hidden by default) -->
+          <div id="client-rename-form" class="hidden flex items-center gap-2 flex-1">
+            <input id="client-rename-input" type="text"
+              class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <button id="client-rename-save" class="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700">Salva</button>
+            <button id="client-rename-cancel" class="text-xs font-medium text-gray-600 bg-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-300">Annulla</button>
+          </div>
+          <button id="client-rename-btn" class="text-gray-400 hover:text-gray-600 transition-colors" title="Rinomina">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+          </button>
+          <button id="client-delete-btn" class="text-gray-400 hover:text-red-600 transition-colors" title="Elimina cliente">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
           </button>
         </div>
+        <!-- Sub-tabs -->
+        <div class="flex border-b mb-6">
+          <button class="client-subtab active" data-subtab="docs">Documenti</button>
+          <button class="client-subtab" data-subtab="entities">Estrai da documenti</button>
+        </div>
+        <!-- Upload toggle area -->
+        <div id="client-upload-area" class="hidden mb-6">
+          <div class="bg-white rounded-lg shadow p-5 space-y-4 max-w-2xl">
+            <div id="client-drop-zone"
+              class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center
+                     hover:border-red-400 transition-colors cursor-pointer">
+              <svg class="mx-auto w-10 h-10 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p class="text-gray-600 text-sm mb-1">Trascina qui il file</p>
+              <p class="text-xs text-gray-400">PDF, JPEG, PNG — oppure clicca per selezionare</p>
+              <input type="file" id="client-file-input" accept=".pdf,.jpg,.jpeg,.png" class="hidden" />
+            </div>
+            <div id="client-file-info" class="hidden text-sm text-gray-600 text-center">
+              <span id="client-file-name"></span>
+            </div>
+            <div class="flex items-end gap-4">
+              <div class="flex-1">
+                <label class="field-label">Tipo documento</label>
+                <select id="client-doc-type"
+                  class="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-red-500">
+                  <option value="antincendio">Pratica Antincendio</option>
+                  <option value="altro">Altro</option>
+                </select>
+              </div>
+              <button id="client-upload-btn"
+                class="bg-red-600 text-white px-6 py-2 rounded-lg text-sm font-medium
+                       hover:bg-red-700 transition-colors">
+                Carica e Analizza
+              </button>
+              <button id="client-upload-cancel"
+                class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
+                       hover:bg-gray-300 transition-colors">
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Action bar -->
+        <div class="flex items-center justify-between mb-4">
+          <span id="client-doc-count" class="text-sm text-gray-400"></span>
+          <button id="client-add-doc-btn"
+            class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium
+                   hover:bg-red-700 transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Carica PDF
+          </button>
+        </div>
+        <!-- Documents table -->
+        <div class="bg-white rounded-lg shadow">
+          <table class="w-full text-sm" id="client-docs-table">
+            <thead>
+              <tr class="border-b text-left text-gray-500">
+                <th class="py-3 px-4 font-medium">Nome file</th>
+                <th class="py-3 px-4 font-medium">Tipo</th>
+                <th class="py-3 px-4 font-medium">Data</th>
+                <th class="py-3 px-4 font-medium text-center">Stato</th>
+                <th class="py-3 px-4 font-medium text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="client-docs-tbody"></tbody>
+          </table>
+          <p id="client-docs-empty" class="text-gray-400 text-sm text-center py-8 hidden">
+            Nessun documento caricato. Clicca "Carica PDF" per iniziare.
+          </p>
+        </div>
       </section>
 
-      <!-- Loading -->
-      <section id="loading-section" class="hidden text-center py-16">
-        <div class="spinner mx-auto mb-4"></div>
-        <p class="text-gray-600 text-lg">Analisi in corso...</p>
-        <p class="text-sm text-gray-400 mt-1">L'estrazione potrebbe richiedere qualche minuto</p>
+      <!-- Client view: entities sub-tab -->
+      <section id="client-entities-section" class="hidden">
+        <!-- Header (same as docs) -->
+        <div class="flex items-center gap-3 mb-4">
+          <button class="client-back-btn-entity text-gray-400 hover:text-red-600 transition-colors" title="Torna ai clienti">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <h2 id="client-name-header-entities" class="text-lg font-semibold text-gray-900"></h2>
+        </div>
+        <!-- Sub-tabs -->
+        <div class="flex border-b mb-6">
+          <button class="client-subtab" data-subtab="docs">Documenti</button>
+          <button class="client-subtab active" data-subtab="entities">Estrai da documenti</button>
+        </div>
+
+        <!-- Document selection -->
+        <div class="bg-white rounded-lg shadow p-5 mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Documenti da cui estrarre</h3>
+            <button id="select-all-docs-btn" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Seleziona tutti</button>
+          </div>
+          <div id="extract-doc-list" class="space-y-2"></div>
+          <p id="extract-doc-empty" class="text-gray-400 text-sm text-center py-3 hidden">
+            Nessun documento caricato.
+          </p>
+        </div>
+
+        <!-- Schema definition -->
+        <div class="bg-white rounded-lg shadow p-5 mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Schema Estrazione</h3>
+            <button id="add-field-btn"
+              class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium
+                     hover:bg-red-100 transition-colors flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Aggiungi Campo
+            </button>
+          </div>
+          <table class="w-full text-sm" id="schema-table">
+            <thead>
+              <tr class="border-b text-left text-gray-500">
+                <th class="py-2 px-3 font-medium">Nome campo</th>
+                <th class="py-2 px-3 font-medium">Descrizione / istruzioni</th>
+                <th class="py-2 px-3 font-medium w-16 text-center"></th>
+              </tr>
+            </thead>
+            <tbody id="schema-tbody"></tbody>
+          </table>
+          <p id="schema-empty" class="text-gray-400 text-sm text-center py-4">
+            Nessun campo definito. Clicca "Aggiungi Campo" per iniziare.
+          </p>
+          <!-- Inline add field row -->
+          <div id="add-field-form" class="hidden mt-3 flex gap-2 items-end">
+            <div class="flex-1">
+              <input id="new-field-name" type="text" placeholder="Nome campo (es. Indirizzo)"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-red-500" />
+            </div>
+            <div class="flex-1">
+              <input id="new-field-desc" type="text" placeholder="Descrizione (es. Indirizzo completo dell'immobile)"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-red-500" />
+            </div>
+            <button id="confirm-field-btn"
+              class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700">
+              Aggiungi
+            </button>
+            <button id="cancel-field-btn"
+              class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300">
+              Annulla
+            </button>
+          </div>
+        </div>
+
+        <!-- Extract button -->
+        <div class="mb-6">
+          <button id="extract-entities-btn"
+            class="bg-red-600 text-white px-6 py-2.5 rounded-lg font-medium
+                   hover:bg-red-700 transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            Estrai da tutti i documenti
+          </button>
+        </div>
+
+        <!-- Results table -->
+        <div class="bg-white rounded-lg shadow p-5">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Risultati Estrazione</h3>
+          <table class="w-full text-sm" id="entities-results-table">
+            <thead>
+              <tr class="border-b text-left text-gray-500">
+                <th class="py-2 px-3 font-medium">Campo</th>
+                <th class="py-2 px-3 font-medium">Valore</th>
+                <th class="py-2 px-3 font-medium">Fonte</th>
+              </tr>
+            </thead>
+            <tbody id="entities-results-tbody"></tbody>
+          </table>
+          <p id="entities-results-empty" class="text-gray-400 text-sm text-center py-4">
+            Definisci uno schema e clicca "Estrai" per popolare questa tabella.
+          </p>
+        </div>
       </section>
 
-      <!-- Results -->
-      <section id="results-section" class="hidden space-y-6">
-        <div class="flex justify-end">
+      <!-- Client document detail -->
+      <section id="client-doc-detail-section" class="hidden space-y-6">
+        <!-- Breadcrumb -->
+        <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
+          <button id="doc-detail-back-btn" class="text-red-600 hover:text-red-700 font-medium flex items-center gap-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Torna ai documenti
+          </button>
+          <span class="text-gray-300">|</span>
+          <span id="doc-detail-breadcrumb" class="truncate"></span>
+        </div>
+        <!-- Doc detail sub-tabs: PDF | Analisi -->
+        <div class="flex items-center justify-between">
+          <div class="flex border-b">
+            <button class="doc-detail-tab active" data-doctab="pdf">File Originale</button>
+            <button class="doc-detail-tab" data-doctab="analysis">Analisi</button>
+          </div>
           <button id="export-btn"
             class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
                    hover:bg-gray-200 transition-colors flex items-center gap-2">
@@ -137,17 +399,68 @@
             Esporta HTML
           </button>
         </div>
-        <div id="header-card" class="bg-white rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Dati Generali</h2>
-          <div id="header-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        <!-- File viewer -->
+        <div id="doc-file-view">
+          <!-- Action buttons -->
+          <div id="doc-file-actions" class="hidden flex gap-2 mb-3">
+            <button id="doc-open-newtab-btn"
+              class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
+                     hover:bg-gray-200 transition-colors flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+              Apri in nuova scheda
+            </button>
+            <a id="doc-download-link" download
+              class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
+                     hover:bg-gray-200 transition-colors flex items-center gap-2 no-underline">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Scarica
+            </a>
+          </div>
+          <!-- PDF embed -->
+          <div id="doc-pdf-container" class="hidden bg-white rounded-lg shadow" style="height: calc(100vh - 280px);">
+            <iframe id="doc-pdf-iframe" class="w-full h-full rounded-lg" style="border:none;"></iframe>
+          </div>
+          <!-- Image viewer -->
+          <div id="doc-img-container" class="hidden bg-white rounded-lg shadow p-4 text-center" style="max-height: calc(100vh - 280px); overflow-y: auto;">
+            <img id="doc-img-viewer" class="max-w-full mx-auto rounded" style="max-height: calc(100vh - 320px);" />
+          </div>
+          <!-- Unavailable -->
+          <div id="doc-file-unavailable" class="hidden text-center py-16 bg-white rounded-lg shadow">
+            <svg class="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-gray-500 font-medium">File originale non disponibile</p>
+            <p class="text-gray-400 text-sm mt-1">I file vengono persi al ricaricamento della pagina</p>
+          </div>
         </div>
-        <div class="bg-white rounded-lg shadow">
-          <div id="building-tabs" class="flex border-b overflow-x-auto"></div>
-          <div id="building-content" class="p-6"></div>
+        <!-- Analysis view (hidden by default) -->
+        <div id="doc-analysis-view" class="hidden space-y-6">
+          <!-- Header card -->
+          <div id="header-card" class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4 border-b pb-2">Dati Generali</h2>
+            <div id="header-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+          </div>
+          <!-- Buildings -->
+          <div class="bg-white rounded-lg shadow">
+            <div id="building-tabs" class="flex border-b overflow-x-auto"></div>
+            <div id="building-content" class="p-6"></div>
+          </div>
         </div>
       </section>
 
-      <!-- Error -->
+      <!-- Loading (shared for client operations) -->
+      <section id="loading-section" class="hidden text-center py-16">
+        <div class="spinner mx-auto mb-4"></div>
+        <p class="text-gray-600 text-lg">Analisi in corso...</p>
+        <p class="text-sm text-gray-400 mt-1">L'estrazione potrebbe richiedere qualche minuto</p>
+      </section>
+
+      <!-- Error (shared) -->
       <section id="error-section" class="hidden">
         <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p class="text-red-700 font-medium">Errore durante l'analisi</p>
@@ -434,9 +747,9 @@
     </main>
   </div>
 
-  <script src="/static/app.js"></script>
-  <script src="/static/normativa.js"></script>
-  <script src="/static/chunks.js?v=3"></script>
-  <script src="/static/chat.js?v=4"></script>
+  <script src="/static/app.js?v=7"></script>
+  <script src="/static/normativa.js?v=2"></script>
+  <script src="/static/chunks.js?v=4"></script>
+  <script src="/static/chat.js?v=5"></script>
 </body>
 </html>

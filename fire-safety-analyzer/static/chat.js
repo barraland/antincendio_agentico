@@ -14,46 +14,8 @@ var _currentConvId = null;
 var _isStreaming = false;
 var _welcomeHtml = chatWelcome ? chatWelcome.outerHTML : "";
 
-// ── Register tab switching ──────────────────────────────────────
-
-(function () {
-  var origSwitch = window.switchSidebarTab;
-  window.switchSidebarTab = function (tab) {
-    if (origSwitch) origSwitch(tab);
-
-    var sidebarChat = document.getElementById("sidebar-chat");
-    if (sidebarChat) sidebarChat.classList.toggle("hidden", tab !== "chat");
-
-    if (chatSection) chatSection.classList.toggle("hidden", tab !== "chat");
-
-    if (tab === "chat") {
-      // Hide other sections
-      ["upload-section", "loading-section", "results-section", "error-section",
-       "norm-upload-section", "norm-processing-section",
-       "norm-detail-section", "norm-error-section", "chunks-section"
-      ].forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el) el.classList.add("hidden");
-      });
-
-      chatSection.classList.remove("hidden");
-      loadConversationList();
-    }
-
-    document.querySelectorAll(".sidebar-tab").forEach(function (t) {
-      t.classList.toggle("active", t.dataset.tab === tab);
-    });
-  };
-
-  // Re-bind sidebar tab clicks
-  document.querySelectorAll(".sidebar-tab").forEach(function (tab) {
-    var clone = tab.cloneNode(true);
-    tab.parentNode.replaceChild(clone, tab);
-    clone.addEventListener("click", function () {
-      window.switchSidebarTab(this.dataset.tab);
-    });
-  });
-})();
+// Tab switching is handled centrally in normativa.js.
+// loadConversationList is called from there.
 
 // ── Conversation list ───────────────────────────────────────────
 

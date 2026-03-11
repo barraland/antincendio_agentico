@@ -22,66 +22,116 @@ let normSelectedFile = null;
 let currentNormId = null;
 let pollTimer = null;
 
-// ── Sidebar tab switching ───────────────────────────────────────
-const sidebarTabs = document.querySelectorAll(".sidebar-tab");
-const sidebarAnalisi = document.getElementById("sidebar-analisi");
-const sidebarNormativa = document.getElementById("sidebar-normativa");
+// ── Sidebar navigation system ────────────────────────────────────
+// Two top-level tabs: "pratiche" and "normativa" (expandable).
+// Normativa sub-tabs: "norm-upload", "chunks", "chat".
 
-const analisiSectionIds = [
-  "upload-section", "loading-section", "results-section", "error-section"
+const sidebarPratiche = document.getElementById("sidebar-pratiche");
+const sidebarNormativa = document.getElementById("sidebar-normativa");
+const sidebarChunks = document.getElementById("sidebar-chunks");
+const sidebarChat = document.getElementById("sidebar-chat");
+const normativaParentTab = document.getElementById("normativa-parent-tab");
+const normativaSubnav = document.getElementById("normativa-subnav");
+
+const allSidebarPanels = [sidebarPratiche, sidebarNormativa, sidebarChunks, sidebarChat];
+
+const praticheSectionIds = [
+  "clients-welcome-section", "client-docs-section", "client-entities-section",
+  "client-doc-detail-section", "loading-section", "error-section"
 ];
 const normativaSectionIds = [
   "norm-upload-section", "norm-processing-section",
   "norm-detail-section", "norm-error-section"
 ];
+const allSectionIds = praticheSectionIds.concat(normativaSectionIds, ["chunks-section", "chat-section"]);
 
-let activeTab = "analisi";
+let activeTab = "pratiche";
+
+function hideAllSections() {
+  allSectionIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.add("hidden");
+  });
+}
+
+function hideAllSidebarPanels() {
+  allSidebarPanels.forEach(function (p) { if (p) p.classList.add("hidden"); });
+}
 
 function switchSidebarTab(tab) {
   activeTab = tab;
-  sidebarTabs.forEach(function (t) {
-    t.classList.toggle("active", t.dataset.tab === tab);
-  });
-  sidebarAnalisi.classList.toggle("hidden", tab !== "analisi");
-  sidebarNormativa.classList.toggle("hidden", tab !== "normativa");
 
-  if (tab === "analisi") {
-    normativaSectionIds.forEach(function (id) {
-      document.getElementById(id).classList.add("hidden");
-    });
-    var anyVisible = analisiSectionIds.some(function (id) {
-      return !document.getElementById(id).classList.contains("hidden");
-    });
-    if (!anyVisible) {
-      document.getElementById("upload-section").classList.remove("hidden");
-    }
-  } else if (tab === "normativa") {
-    analisiSectionIds.forEach(function (id) {
-      document.getElementById(id).classList.add("hidden");
-    });
+  // Update top-level tab active states
+  var prTab = document.querySelector('.sidebar-tab[data-tab="pratiche"]');
+  prTab.classList.toggle("active", tab === "pratiche");
+
+  // Normativa parent is "active" when any normativa sub-tab is active
+  var isNormChild = (tab === "norm-upload" || tab === "chunks" || tab === "chat");
+  normativaParentTab.classList.toggle("active", isNormChild);
+  normativaParentTab.classList.toggle("expanded", isNormChild);
+  normativaSubnav.classList.toggle("hidden", !isNormChild);
+
+  // Update sub-tab active states
+  document.querySelectorAll(".sidebar-subtab").forEach(function (st) {
+    st.classList.toggle("active", st.dataset.tab === tab);
+  });
+
+  // Hide everything first
+  hideAllSections();
+  hideAllSidebarPanels();
+
+  if (tab === "pratiche") {
+    sidebarPratiche.classList.remove("hidden");
+    if (typeof showClientiView === "function") showClientiView();
+  } else if (tab === "norm-upload") {
+    sidebarNormativa.classList.remove("hidden");
     var anyNormVisible = normativaSectionIds.some(function (id) {
       return !document.getElementById(id).classList.contains("hidden");
     });
-    if (!anyNormVisible) {
-      normSections.upload.classList.remove("hidden");
-    }
+    // Since we hid everything, show the upload section
+    normSections.upload.classList.remove("hidden");
     if (typeof loadNormDocPanel === "function") loadNormDocPanel();
+  } else if (tab === "chunks") {
+    sidebarChunks.classList.remove("hidden");
+    var chunkSection = document.getElementById("chunks-section");
+    if (chunkSection) chunkSection.classList.remove("hidden");
+    if (typeof loadChunkDocFilter === "function") loadChunkDocFilter();
+    if (typeof loadChunks === "function") loadChunks();
+  } else if (tab === "chat") {
+    sidebarChat.classList.remove("hidden");
+    var chatSec = document.getElementById("chat-section");
+    if (chatSec) chatSec.classList.remove("hidden");
+    if (typeof loadConversationList === "function") loadConversationList();
   }
 }
 
-sidebarTabs.forEach(function (tab) {
-  tab.addEventListener("click", function () {
+// ── Bind top-level tabs ─────────────────────────────────────────
+document.querySelector('.sidebar-tab[data-tab="pratiche"]').addEventListener("click", function () {
+  switchSidebarTab("pratiche");
+});
+
+normativaParentTab.addEventListener("click", function () {
+  if (activeTab === "norm-upload" || activeTab === "chunks" || activeTab === "chat") {
+    // Already expanded — collapse (go back to pratiche? or toggle?)
+    // Keep expanded, just stay on current sub-tab
+    return;
+  }
+  // Expand and go to first sub-tab
+  switchSidebarTab("norm-upload");
+});
+
+// ── Bind sub-tabs ───────────────────────────────────────────────
+document.querySelectorAll(".sidebar-subtab").forEach(function (st) {
+  st.addEventListener("click", function () {
     switchSidebarTab(this.dataset.tab);
   });
 });
 
 // ── Normativa section switching ─────────────────────────────────
 function showNormSection(name) {
+  hideAllSections();
   Object.keys(normSections).forEach(function (key) {
     normSections[key].classList.toggle("hidden", key !== name);
-  });
-  analisiSectionIds.forEach(function (id) {
-    document.getElementById(id).classList.add("hidden");
   });
 }
 
@@ -89,7 +139,7 @@ function showNormSection(name) {
 normUploadBtn.addEventListener("click", function () {
   currentNormId = null;
   highlightNormItem(null);
-  switchSidebarTab("normativa");
+  switchSidebarTab("norm-upload");
   showNormSection("upload");
   // Reset form
   normFileInfo.classList.add("hidden");
@@ -265,7 +315,7 @@ async function loadNormDocument(docId) {
   if (docId === currentNormId && !normSections.processing.classList.contains("hidden")) return;
   currentNormId = docId;
   highlightNormItem(docId);
-  switchSidebarTab("normativa");
+  switchSidebarTab("norm-upload");
 
   try {
     var resp = await fetch("/normativa/documents/" + docId);

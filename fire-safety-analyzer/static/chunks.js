@@ -10,43 +10,8 @@ const chunkDetail = document.getElementById("chunk-detail");
 const chunkEmpty = document.getElementById("chunk-empty");
 const chunkCountLabel = document.getElementById("chunk-count-label");
 
-// ── Register this tab with the sidebar switching system ─────────
-const _origSwitch = typeof switchSidebarTab === "function" ? switchSidebarTab : null;
-
-function switchSidebarTabExtended(tab) {
-  if (_origSwitch) _origSwitch(tab);
-
-  var sidebarChunks = document.getElementById("sidebar-chunks");
-  sidebarChunks.classList.toggle("hidden", tab !== "chunks");
-
-  if (tab === "chunks") {
-    [
-      "upload-section", "loading-section", "results-section", "error-section",
-      "norm-upload-section", "norm-processing-section",
-      "norm-detail-section", "norm-error-section", "chat-section"
-    ].forEach(function (id) { var el = document.getElementById(id); if (el) el.classList.add("hidden"); });
-
-    chunkSection.classList.remove("hidden");
-    loadChunkDocFilter();
-    loadChunks();
-  } else {
-    chunkSection.classList.add("hidden");
-  }
-
-  document.querySelectorAll(".sidebar-tab").forEach(function (t) {
-    t.classList.toggle("active", t.dataset.tab === tab);
-  });
-}
-
-window.switchSidebarTab = switchSidebarTabExtended;
-
-document.querySelectorAll(".sidebar-tab").forEach(function (tab) {
-  var clone = tab.cloneNode(true);
-  tab.parentNode.replaceChild(clone, tab);
-  clone.addEventListener("click", function () {
-    switchSidebarTabExtended(this.dataset.tab);
-  });
-});
+// Tab switching is handled centrally in normativa.js.
+// loadChunkDocFilter and loadChunks are called from there.
 
 // ── Filter controls ─────────────────────────────────────────────
 chunkFilterBtn.addEventListener("click", loadChunks);
