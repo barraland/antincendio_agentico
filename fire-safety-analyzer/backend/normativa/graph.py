@@ -36,7 +36,7 @@ def _get_client() -> OpenAI:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY non impostata")
-    return OpenAI(api_key=api_key)
+    return OpenAI(api_key=api_key, max_retries=5)
 
 
 def _log_usage(description: str, resp) -> None:
