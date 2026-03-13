@@ -33,12 +33,15 @@ def _log_usage(description: str, resp) -> None:
         return
     cached = getattr(usage, "prompt_tokens_details", None)
     cached_tokens = getattr(cached, "cached_tokens", 0) if cached else 0
+    completion_details = getattr(usage, "completion_tokens_details", None)
+    reasoning_tokens = getattr(completion_details, "reasoning_tokens", 0) if completion_details else 0
     logger.info(
-        "[GPT] %s — input: %d tokens (cached: %d), output: %d tokens",
+        "[GPT] %s — input: %d tokens (cached: %d), output: %d tokens (reasoning: %d)",
         description,
         usage.prompt_tokens,
         cached_tokens,
         usage.completion_tokens,
+        reasoning_tokens,
     )
 
 
@@ -168,6 +171,7 @@ def extract_entities_from_files(
                 messages=messages,
                 tools=[tool],
                 tool_choice={"type": "function", "function": {"name": "report_entities"}},
+                reasoning_effort="minimal",
             )
             _log_usage(f"EntityExtraction:{file_name}", resp)
 

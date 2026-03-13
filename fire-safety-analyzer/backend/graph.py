@@ -132,7 +132,7 @@ def header_extractor(state: GraphState) -> GraphState:
             },
         }],
         tool_choice={"type": "function", "function": {"name": "report_header"}},
-        reasoning_effort="low",
+        reasoning_effort="minimal",
     )
     _log_usage("Header extraction (intestazione relazione)", resp)
     tool_call = resp.choices[0].message.tool_calls[0]

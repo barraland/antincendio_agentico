@@ -1,7 +1,8 @@
-"""FastAPI app: POST /analyze + entity extraction + multi-document storage + dashboard."""
+"""FastAPI app: POST /analyze + entity extraction + file storage + dashboard."""
 
 from __future__ import annotations
 
+import mimetypes
 import tempfile
 import uuid
 from datetime import datetime
@@ -11,7 +12,7 @@ from typing import Optional
 import json
 
 from fastapi import FastAPI, File, Form, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
@@ -22,6 +23,9 @@ from backend.normativa.api import router as normativa_router
 from backend.normativa.chat_api import router as chat_router
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+UPLOADS_DIR = BASE_DIR / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
+
 app = FastAPI(title="Fire Safety Analyzer")
 app.include_router(normativa_router)
 app.include_router(chat_router)
@@ -33,17 +37,55 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 analyses: dict[str, dict] = {}
 
 
+def _save_upload(file_data: bytes, filename: str) -> tuple[str, str]:
+    """Save file to uploads dir. Returns (file_id, url)."""
+    file_id = uuid.uuid4().hex[:12]
+    safe_name = f"{file_id}_{filename}"
+    (UPLOADS_DIR / safe_name).write_bytes(file_data)
+    return file_id, f"/uploads/{file_id}/{filename}"
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
+@app.post("/upload-file")
+async def upload_file(file: UploadFile = File(...)):
+    """Upload a file and persist it. Returns file_id and URL."""
+    filename = file.filename or "file"
+    file_data = await file.read()
+    file_id, url = _save_upload(file_data, filename)
+    return {"file_id": file_id, "filename": filename, "url": url}
+
+
+@app.get("/uploads/{file_id}/{filename}")
+async def serve_upload(file_id: str, filename: str):
+    """Serve a previously uploaded file."""
+    matches = list(UPLOADS_DIR.glob(f"{file_id}_*"))
+    if not matches:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    file_path = matches[0]
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    return FileResponse(
+        file_path,
+        media_type=content_type or "application/octet-stream",
+        filename=filename,
+    )
+
+
 @app.post("/analyze")
 async def analyze(file: UploadFile = File(...)):
     filename = file.filename or "upload.pdf"
+    file_data = await file.read()
+
+    # Persist the original file
+    file_id, file_url = _save_upload(file_data, filename)
+
+    # Write to temp for extraction
     suffix = Path(filename).suffix
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(await file.read())
+        tmp.write(file_data)
         tmp_path = tmp.name
 
     result = run_extraction(tmp_path)
@@ -55,6 +97,7 @@ async def analyze(file: UploadFile = File(...)):
         "filename": filename,
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "result": result.model_dump(),
+        "file_url": file_url,
     }
     analyses[doc_id] = entry
     return entry
@@ -71,7 +114,6 @@ async def list_analyses():
 @app.get("/analyses/{doc_id}")
 async def get_analysis(doc_id: str):
     if doc_id not in analyses:
-        from fastapi.responses import JSONResponse
         return JSONResponse({"error": "not found"}, status_code=404)
     return analyses[doc_id]
 
@@ -79,7 +121,6 @@ async def get_analysis(doc_id: str):
 @app.get("/analyses/{doc_id}/export")
 async def export_analysis(doc_id: str):
     if doc_id not in analyses:
-        from fastapi.responses import JSONResponse
         return JSONResponse({"error": "not found"}, status_code=404)
     entry = analyses[doc_id]
     export_tpl = templates.get_template("export.html")
@@ -87,7 +128,6 @@ async def export_analysis(doc_id: str):
         filename=entry["filename"],
         timestamp=entry["timestamp"],
     )
-    # Replace placeholder inside {% raw %} block (Jinja2 won't process it)
     data_json = json.dumps(entry["result"], ensure_ascii=False)
     html_content = html_content.replace("{{ DATA_PLACEHOLDER }}", data_json)
     safe_name = Path(entry["filename"]).stem + "_report.html"
@@ -115,7 +155,6 @@ async def extract_entities(
     if not schema_list:
         return JSONResponse({"error": "Schema vuoto"}, status_code=400)
 
-    # Save uploaded files to temp dir
     tmp_paths: list[str] = []
     file_names: list[str] = []
     mime_types: list[str] = []

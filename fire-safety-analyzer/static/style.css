@@ -712,3 +712,23 @@
   border-color: #dc2626;
   box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
 }
+
+/* ── Extraction items ─────────────────────────────────────────── */
+.extraction-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.extraction-item:hover {
+  background-color: #f9fafb;
+}
+
+.extraction-item.active {
+  background-color: #eef2ff;
+  border-color: #4f46e5;
+}

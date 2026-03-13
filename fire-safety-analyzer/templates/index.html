@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Fire Safety Analyzer</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css?v=6" />
+  <link rel="stylesheet" href="/static/style.css?v=7" />
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
@@ -293,7 +293,11 @@
         <!-- Schema definition -->
         <div class="bg-white rounded-lg shadow p-5 mb-6">
           <div class="flex items-center justify-between mb-3">
-            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Schema Estrazione</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Schema:</h3>
+              <span id="schema-name-display" class="text-sm font-medium text-gray-800 schema-cell-editable px-1"
+                    title="Clicca per rinominare">Schema</span>
+            </div>
             <button id="add-field-btn"
               class="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium
                      hover:bg-red-100 transition-colors flex items-center gap-1">
@@ -352,9 +356,22 @@
           </button>
         </div>
 
+        <!-- Extractions list -->
+        <div class="bg-white rounded-lg shadow p-5 mb-6">
+          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Estrazioni Salvate</h3>
+          <div id="extractions-list" class="space-y-2"></div>
+          <p id="extractions-empty" class="text-gray-400 text-sm text-center py-3">
+            Nessuna estrazione effettuata.
+          </p>
+        </div>
+
         <!-- Results table -->
         <div class="bg-white rounded-lg shadow p-5">
-          <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Risultati Estrazione</h3>
+          <div id="entities-result-header" class="flex items-center gap-2 mb-3 hidden">
+            <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wide">Risultati:</h3>
+            <span class="result-ext-name text-sm font-medium text-gray-800"></span>
+          </div>
+          <h3 id="entities-results-default-header" class="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Risultati Estrazione</h3>
           <table class="w-full text-sm" id="entities-results-table">
             <thead>
               <tr class="border-b text-left text-gray-500">
@@ -747,7 +764,7 @@
     </main>
   </div>
 
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/app.js?v=8"></script>
   <script src="/static/normativa.js?v=2"></script>
   <script src="/static/chunks.js?v=4"></script>
   <script src="/static/chat.js?v=5"></script>

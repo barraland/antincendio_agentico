@@ -1,5 +1,5 @@
 // ── Client Management (Pratiche tab) ─────────────────────────────
-// Metadata in localStorage, PDF blobs in-memory (lost on reload).
+// Metadata in localStorage, files persisted server-side via /upload-file.
 
 // ── State ───────────────────────────────────────────────────────
 let clients = JSON.parse(localStorage.getItem("fs_clients") || "[]");
@@ -7,13 +7,37 @@ let clientDocs = JSON.parse(localStorage.getItem("fs_clientDocs") || "{}");
 let clientSchemas = JSON.parse(localStorage.getItem("fs_clientSchemas") || "{}");
 let clientEntities = JSON.parse(localStorage.getItem("fs_clientEntities") || "{}");
 
-// In-memory file blob URLs (not persisted across reload)
+// ── Migrate old data formats ────────────────────────────────────
+// Schemas: old format was [{nome, descrizione}, ...], new is {nome, campi: [...]}
+Object.keys(clientSchemas).forEach(function (cid) {
+  var s = clientSchemas[cid];
+  if (Array.isArray(s)) {
+    clientSchemas[cid] = { nome: "Schema", campi: s };
+  }
+});
+// Entities: old format was [{campo, valore, fonte}, ...], new is [{id, nome, entities, timestamp}, ...]
+Object.keys(clientEntities).forEach(function (cid) {
+  var e = clientEntities[cid];
+  if (Array.isArray(e) && e.length > 0 && e[0].campo !== undefined) {
+    clientEntities[cid] = [{
+      id: "ext_migrated",
+      nome: "Estrazione importata",
+      entities: e,
+      timestamp: new Date().toISOString()
+    }];
+  } else if (!Array.isArray(e)) {
+    clientEntities[cid] = [];
+  }
+});
+
+// In-memory blob URLs (fallback when server URL not available)
 const pdfBlobUrls = {};  // { docId: blobUrl }
 
 let currentClientId = null;
 let currentClientTab = "docs";   // "docs" | "entities"
 let currentClientDocId = null;
 let currentDocDetailTab = "pdf"; // "pdf" | "analysis"
+let currentExtractionId = null;
 
 function saveState() {
   localStorage.setItem("fs_clients", JSON.stringify(clients));
@@ -326,7 +350,7 @@ function renderDocTable() {
         ? '<span class="v-icon v-err">&#10007;</span> Errore'
         : '<span class="text-gray-400">&#9203;</span> Caricato';
 
-    var pdfIcon = pdfBlobUrls[doc.id]
+    var pdfIcon = (pdfBlobUrls[doc.id] || doc.file_url)
       ? '<span class="text-green-600 text-xs" title="File disponibile">&#128196;</span> '
       : '';
 
@@ -395,9 +419,9 @@ clientUploadBtn.addEventListener("click", uploadClientDoc);
 async function uploadClientDoc() {
   if (!selectedClientFile || !currentClientId) return;
   var docType = clientDocType.value;
-
-  // Store file blob URL directly from File object (preserves MIME type)
   var fileMime = selectedClientFile.type || "application/octet-stream";
+
+  // Keep blob URL as immediate fallback
   var fileBlobUrl = URL.createObjectURL(selectedClientFile);
 
   if (docType === "antincendio") {
@@ -416,6 +440,7 @@ async function uploadClientDoc() {
         filename: entry.filename,
         type: "antincendio",
         mime: fileMime,
+        file_url: entry.file_url || null,
         timestamp: entry.timestamp,
         status: "done",
         result: entry.result
@@ -435,11 +460,24 @@ async function uploadClientDoc() {
       errorSection.classList.remove("hidden");
     }
   } else {
+    // Upload file to server for persistence
+    var uploadForm = new FormData();
+    uploadForm.append("file", selectedClientFile);
+    var fileUrl = null;
+    try {
+      var upResp = await fetch("/upload-file", { method: "POST", body: uploadForm });
+      if (upResp.ok) {
+        var upData = await upResp.json();
+        fileUrl = upData.url;
+      }
+    } catch (e) { /* file persistence failed, blob URL still works */ }
+
     var doc = {
       id: "doc_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
       filename: selectedClientFile.name,
       type: "altro",
       mime: fileMime,
+      file_url: fileUrl,
       timestamp: new Date().toISOString(),
       status: "done",
       result: null
@@ -484,8 +522,8 @@ function viewDocument(docId) {
   document.getElementById("doc-detail-breadcrumb").textContent =
     (client ? client.ragione_sociale : "") + " > " + doc.filename;
 
-  // Setup file view (PDF or image)
-  var blobUrl = pdfBlobUrls[docId];
+  // Setup file view (PDF or image) — prefer blob URL, fallback to server URL
+  var blobUrl = pdfBlobUrls[docId] || doc.file_url || null;
   var hasFile = !!blobUrl;
   var mime = doc.mime || "";
   // Infer MIME from filename if not stored (older docs)
@@ -546,7 +584,7 @@ function viewDocument(docId) {
   });
 
   // Default to PDF tab if available, otherwise analysis
-  if (hasPdf) {
+  if (hasFile) {
     switchDocDetailTab("pdf");
   } else if (hasAnalysis) {
     switchDocDetailTab("analysis");
@@ -609,6 +647,7 @@ function showClientEntities() {
 
   renderExtractDocList();
   renderSchema();
+  renderExtractionsList();
   renderEntitiesResults();
 }
 
@@ -654,13 +693,26 @@ selectAllDocsBtn.addEventListener("click", function () {
 });
 
 // ── Schema CRUD ─────────────────────────────────────────────────
-function renderSchema() {
-  var schema = clientSchemas[currentClientId] || [];
-  schemaTbody.innerHTML = "";
-  schemaEmpty.classList.toggle("hidden", schema.length > 0);
-  document.getElementById("schema-table").classList.toggle("hidden", schema.length === 0);
+function getSchema() {
+  if (!clientSchemas[currentClientId]) clientSchemas[currentClientId] = { nome: "Schema", campi: [] };
+  return clientSchemas[currentClientId];
+}
 
-  schema.forEach(function (field, idx) {
+function renderSchemaName() {
+  var schema = getSchema();
+  var el = document.getElementById("schema-name-display");
+  if (el) el.textContent = schema.nome || "Schema";
+}
+
+function renderSchema() {
+  var schema = getSchema();
+  var campi = schema.campi || [];
+  schemaTbody.innerHTML = "";
+  schemaEmpty.classList.toggle("hidden", campi.length > 0);
+  document.getElementById("schema-table").classList.toggle("hidden", campi.length === 0);
+  renderSchemaName();
+
+  campi.forEach(function (field, idx) {
     var tr = document.createElement("tr");
     tr.className = "border-b border-gray-100";
     tr.innerHTML =
@@ -675,7 +727,7 @@ function renderSchema() {
     // Inline edit on click
     tr.querySelectorAll(".schema-cell-editable").forEach(function (td) {
       td.addEventListener("click", function () {
-        if (td.querySelector("input")) return; // already editing
+        if (td.querySelector("input")) return;
         var fieldKey = td.dataset.field;
         var currentVal = field[fieldKey] || "";
         var input = document.createElement("input");
@@ -690,9 +742,7 @@ function renderSchema() {
 
         function commitEdit() {
           var newVal = input.value.trim();
-          if (fieldKey === "nome" && !newVal) {
-            newVal = currentVal; // don't allow empty name
-          }
+          if (fieldKey === "nome" && !newVal) newVal = currentVal;
           field[fieldKey] = newVal;
           saveState();
           renderSchema();
@@ -707,14 +757,41 @@ function renderSchema() {
     });
 
     tr.querySelector(".schema-delete-btn").addEventListener("click", function () {
-      clientSchemas[currentClientId].splice(idx, 1);
+      schema.campi.splice(idx, 1);
       saveState();
       renderSchema();
-      renderEntitiesResults();
     });
     schemaTbody.appendChild(tr);
   });
 }
+
+// Schema name inline edit
+document.getElementById("schema-name-display").addEventListener("click", function () {
+  var el = this;
+  if (el.querySelector("input")) return;
+  var schema = getSchema();
+  var curName = schema.nome || "Schema";
+  var input = document.createElement("input");
+  input.type = "text";
+  input.value = curName;
+  input.className = "schema-inline-input";
+  input.style.width = "200px";
+  el.textContent = "";
+  el.appendChild(input);
+  input.focus();
+  input.select();
+  function commit() {
+    var v = input.value.trim();
+    schema.nome = v || curName;
+    saveState();
+    renderSchemaName();
+  }
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { input.value = curName; input.blur(); }
+  });
+});
 
 addFieldBtn.addEventListener("click", function () {
   addFieldForm.classList.remove("hidden");
@@ -730,20 +807,113 @@ function addSchemaField() {
   var nome = newFieldName.value.trim();
   var desc = newFieldDesc.value.trim();
   if (!nome) return;
-  if (!clientSchemas[currentClientId]) clientSchemas[currentClientId] = [];
-  clientSchemas[currentClientId].push({ nome: nome, descrizione: desc });
+  var schema = getSchema();
+  schema.campi.push({ nome: nome, descrizione: desc });
   saveState();
-  addFieldForm.classList.add("hidden");
   renderSchema();
-  renderEntitiesResults();
+  // Keep form open for rapid sequential entry
+  newFieldName.value = "";
+  newFieldDesc.value = "";
+  newFieldName.focus();
 }
 
-// ── Entities results ────────────────────────────────────────────
+// ── Extractions list ─────────────────────────────────────────────
+function getExtractions() {
+  if (!clientEntities[currentClientId]) clientEntities[currentClientId] = [];
+  return clientEntities[currentClientId];
+}
+
+function renderExtractionsList() {
+  var extractions = getExtractions();
+  var listEl = document.getElementById("extractions-list");
+  var emptyEl = document.getElementById("extractions-empty");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  emptyEl.classList.toggle("hidden", extractions.length > 0);
+
+  extractions.forEach(function (ext) {
+    var isActive = ext.id === currentExtractionId;
+    var item = document.createElement("div");
+    item.className = "extraction-item" + (isActive ? " active" : "");
+    item.innerHTML =
+      '<div class="flex-1 min-w-0">' +
+        '<div class="extraction-name schema-cell-editable text-sm font-medium truncate">' + escapeHtml(ext.nome) + '</div>' +
+        '<div class="text-xs text-gray-400">' + formatDate(ext.timestamp) + '</div>' +
+      '</div>' +
+      '<div class="flex items-center gap-1">' +
+        '<button class="ext-view-btn text-indigo-600 hover:text-indigo-800 text-xs font-medium" title="Visualizza">Vedi</button>' +
+        '<button class="ext-delete-btn text-gray-400 hover:text-red-600 text-xs" title="Elimina">&times;</button>' +
+      '</div>';
+
+    // View extraction
+    item.querySelector(".ext-view-btn").addEventListener("click", function () {
+      currentExtractionId = ext.id;
+      renderExtractionsList();
+      renderEntitiesResults();
+    });
+
+    // Inline rename
+    var nameEl = item.querySelector(".extraction-name");
+    nameEl.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (nameEl.querySelector("input")) return;
+      var curName = ext.nome;
+      var input = document.createElement("input");
+      input.type = "text";
+      input.value = curName;
+      input.className = "schema-inline-input";
+      nameEl.textContent = "";
+      nameEl.appendChild(input);
+      input.focus();
+      input.select();
+      function commit() {
+        var v = input.value.trim();
+        ext.nome = v || curName;
+        saveState();
+        renderExtractionsList();
+      }
+      input.addEventListener("blur", commit);
+      input.addEventListener("keydown", function (ev) {
+        if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+        if (ev.key === "Escape") { input.value = curName; input.blur(); }
+      });
+    });
+
+    // Delete extraction
+    item.querySelector(".ext-delete-btn").addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (!confirm('Eliminare "' + ext.nome + '"?')) return;
+      clientEntities[currentClientId] = extractions.filter(function (x) { return x.id !== ext.id; });
+      if (currentExtractionId === ext.id) currentExtractionId = null;
+      saveState();
+      renderExtractionsList();
+      renderEntitiesResults();
+    });
+
+    listEl.appendChild(item);
+  });
+}
+
 function renderEntitiesResults() {
-  var schema = clientSchemas[currentClientId] || [];
-  var entities = clientEntities[currentClientId] || [];
+  var extractions = getExtractions();
+  var ext = extractions.find(function (e) { return e.id === currentExtractionId; });
+  var entities = ext ? ext.entities : [];
   entitiesResultsTbody.innerHTML = "";
-  entitiesResultsEmpty.classList.toggle("hidden", entities.length > 0 || schema.length > 0);
+
+  var resultHeader = document.getElementById("entities-result-header");
+  var defaultHeader = document.getElementById("entities-results-default-header");
+  if (resultHeader) {
+    resultHeader.classList.toggle("hidden", !ext);
+    if (ext) {
+      var nameSpan = resultHeader.querySelector(".result-ext-name");
+      if (nameSpan) nameSpan.textContent = ext.nome;
+    }
+  }
+  if (defaultHeader) {
+    defaultHeader.classList.toggle("hidden", !!ext);
+  }
+
+  entitiesResultsEmpty.classList.toggle("hidden", entities.length > 0);
   document.getElementById("entities-results-table").classList.toggle("hidden", entities.length === 0);
 
   entities.forEach(function (ent) {
@@ -759,17 +929,18 @@ function renderEntitiesResults() {
 }
 
 extractEntitiesBtn.addEventListener("click", async function () {
-  var schema = clientSchemas[currentClientId] || [];
-  if (!schema.length) { alert("Definisci almeno un campo nello schema di estrazione."); return; }
+  var schema = getSchema();
+  var campi = schema.campi || [];
+  if (!campi.length) { alert("Definisci almeno un campo nello schema di estrazione."); return; }
   if (!selectedExtractDocs.size) { alert("Seleziona almeno un documento da cui estrarre."); return; }
 
-  // Check that all selected docs have blob URLs available
+  // Check that all selected docs have files available
   var docs = clientDocs[currentClientId] || [];
   var selectedDocs = docs.filter(function (d) { return selectedExtractDocs.has(d.id); });
-  var missingFiles = selectedDocs.filter(function (d) { return !pdfBlobUrls[d.id]; });
+  var missingFiles = selectedDocs.filter(function (d) { return !pdfBlobUrls[d.id] && !d.file_url; });
   if (missingFiles.length) {
     alert("File non disponibili per: " + missingFiles.map(function (d) { return d.filename; }).join(", ") +
-      "\n\nI file vengono persi al ricaricamento della pagina. Ricaricali.");
+      "\n\nRicarica i documenti.");
     return;
   }
 
@@ -779,16 +950,14 @@ extractEntitiesBtn.addEventListener("click", async function () {
   extractEntitiesBtn.innerHTML = '<span class="spinner-small"></span> Estrazione in corso...';
 
   try {
-    // Build FormData with schema + files (fetched from blob URLs)
     var formData = new FormData();
-    formData.append("schema", JSON.stringify(schema));
+    formData.append("schema", JSON.stringify(campi));
 
     for (var i = 0; i < selectedDocs.length; i++) {
       var doc = selectedDocs[i];
-      var blobUrl = pdfBlobUrls[doc.id];
-      var resp = await fetch(blobUrl);
+      var fileUrl = pdfBlobUrls[doc.id] || doc.file_url;
+      var resp = await fetch(fileUrl);
       var blob = await resp.blob();
-      // Use stored MIME type or infer from filename
       var mime = doc.mime || blob.type || "application/octet-stream";
       var file = new File([blob], doc.filename, { type: mime });
       formData.append("files", file);
@@ -801,9 +970,20 @@ extractEntitiesBtn.addEventListener("click", async function () {
     }
 
     var result = await response.json();
-    // Save extracted entities
-    clientEntities[currentClientId] = result.entities;
+
+    // Create named extraction
+    var extId = "ext_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    var extName = schema.nome + " — " + new Date().toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    var extraction = {
+      id: extId,
+      nome: extName,
+      entities: result.entities,
+      timestamp: new Date().toISOString()
+    };
+    getExtractions().push(extraction);
+    currentExtractionId = extId;
     saveState();
+    renderExtractionsList();
     renderEntitiesResults();
 
   } catch (e) {
